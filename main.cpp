@@ -1,82 +1,88 @@
-#include <stdio.h>
+#include <iostream>
+#include <list>
+#include <unordered_map>
 
-#define MAX_FRAMES 10 // Maximum number of frames
+using namespace std;
 
-// Function to find the index of the given page in the frame array
-int findIndex(int page, int frames[], int n) {
-    for (int i = 0; i < n; i++) {
-        if (frames[i] == page) {
-            return i;
-        }
-    }
-    return -1; // Return -1 if page is not found in frames
-}
+class LRUCache {
+private:
+    list<int> lruList;                     // Linked list to maintain LRU order
+    unordered_map<int, list<int>::iterator> pageMap; // Map to store page number and its iterator in the linked list
+    int capacity;                         // number of frames
+    int pageFaults;                       // Counter for page faults
+    int hits;                             // Counter for hits
 
-// Function to update the order of pages in the frame array based on LRU
-void updateLRU(int frames[], int index, int n) {
-    for (int i = index; i > 0; i--) {
-        frames[i] = frames[i - 1];
-    }
-    frames[0] = frames[index];
-}
+public:
+    LRUCache(int capacity) : capacity(capacity), pageFaults(0), hits(0) {}
 
-// Function to simulate LRU page replacement algorithm
-void simulateLRU(int pages[], int numPages, int numFrames) {
-    int frames[MAX_FRAMES] = {-1}; // Initialize frames with -1 indicating empty frame
-    int pageFaults = 0;
-    int hits = 0;
-
-    for (int i = 0; i < numPages; i++) {
-        int page = pages[i];
-
-        // Check if the page is already in a frame
-        int index = findIndex(page, frames, numFrames);
-
-        if (index == -1) {
-            // Page fault: Page is not in any frame, replace the least recently used page
-            pageFaults++;
-            if (frames[numFrames - 1] != -1) {
-                // If all frames are occupied, remove the last page (LRU)
-                updateLRU(frames, numFrames - 1, numFrames);
-            }
-        } else {
-            // Page hit: Page is already in a frame, update LRU order
+    // Function to handle a page reference
+    void referencePage(int page) {
+        // Check if the page is already in the cache
+        if (pageMap.find(page) != pageMap.end()) {
+            // Page hit
             hits++;
-            updateLRU(frames, index, numFrames);
+            lruList.erase(pageMap[page]);   // Remove the page from its current position in the list
+        } else {
+            // Page fault
+            pageFaults++;
+            if (lruList.size() == capacity) {
+                // Remove the least recently used page from the back of the list
+                int lruPage = lruList.back();
+                lruList.pop_back();
+                pageMap.erase(lruPage);
+            }
         }
 
-        // Place the current page in the first frame
-        frames[0] = page;
+        // Add the referenced page to the front of the list
+        lruList.push_front(page);
+        pageMap[page] = lruList.begin();
     }
 
-    // Calculate hit ratio
-    float hitRatio = (float)hits / numPages * 100;
+    // Function to display the content of frames
+    void displayFrames() {
+        cout << "Frames: ";
+        for (int page : lruList) {
+            cout << "[" << page << "] ";
+        }
+        cout << endl;
+    }
 
-    // Display results
-    printf("Number of Page Faults: %d\n", pageFaults);
-    printf("Number of Hits: %d\n", hits);
-    printf("Hit Ratio: %.2f%%\n", hitRatio);
-}
+    // Function to calculate and display page fault information
+    void displayPageFaultInfo() {
+        float hitRatio = static_cast<float>(hits) / (hits + pageFaults);
+        cout << "\nNumber of Page Faults: " << pageFaults << endl;
+        cout << "Number of Hits: " << hits << endl;
+        cout << "Hit Ratio: " << hitRatio << endl;
+    }
+};
 
 int main() {
     int numFrames, numPages;
 
     // Get user input for the number of frames and pages
-    printf("Enter the number of frames: ");
-    scanf("%d", &numFrames);
+    cout << "Enter the number of frames: ";
+    cin >> numFrames;
 
-    printf("Enter the number of pages: ");
-    scanf("%d", &numPages);
+    cout << "Enter the number of pages: ";
+    cin >> numPages;
 
-    int pages[MAX_FRAMES];
+    // Create an instance of the LRUCache
+    LRUCache lruCache(numFrames);
 
-    // Get user input for the sequence of pages
-    printf("Enter the sequence of pages:\n");
+    int page;
+
+    cout << "Enter the sequence of pages:\n";
+
     for (int i = 0; i < numPages; i++) {
-        scanf("%d", &pages[i]);
+        cin >> page;
+        lruCache.referencePage(page);
+
+        // Display the current state of frames after each page reference
+        lruCache.displayFrames();
     }
 
-    // Simulate LRU page replacement algorithm
-    simulateLRU(pages, numPages, numFrames);
+    // Display page fault information
+    lruCache.displayPageFaultInfo();
 
     return 0;
+}
